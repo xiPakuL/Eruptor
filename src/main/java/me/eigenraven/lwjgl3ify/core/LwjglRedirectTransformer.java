@@ -1,16 +1,16 @@
 package me.eigenraven.lwjgl3ify.core;
 
-import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
-
 import net.minecraft.launchwrapper.IClassTransformer;
 
-import org.spongepowered.libraries.org.objectweb.asm.AnnotationVisitor;
-import org.spongepowered.libraries.org.objectweb.asm.ClassReader;
-import org.spongepowered.libraries.org.objectweb.asm.ClassVisitor;
-import org.spongepowered.libraries.org.objectweb.asm.ClassWriter;
-import org.spongepowered.libraries.org.objectweb.asm.Type;
-import org.spongepowered.libraries.org.objectweb.asm.commons.ClassRemapper;
-import org.spongepowered.libraries.org.objectweb.asm.commons.Remapper;
+import org.spongepowered.asm.lib.AnnotationVisitor;
+import org.spongepowered.asm.lib.ClassReader;
+import org.spongepowered.asm.lib.ClassVisitor;
+import org.spongepowered.asm.lib.ClassWriter;
+import org.spongepowered.asm.lib.Type;
+import org.spongepowered.asm.lib.commons.ClassRemapper;
+import org.spongepowered.asm.lib.commons.Remapper;
+
+import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 
 public class LwjglRedirectTransformer extends Remapper implements IClassTransformer {
 
@@ -50,11 +50,9 @@ public class LwjglRedirectTransformer extends Remapper implements IClassTransfor
         return writer.toByteArray();
     }
 
-    final String[] fromPrefixes = new String[] { "org/lwjgl/", "paulscode/sound/libraries/", "javax/xml/bind/",
-            "javax/servlet/" };
+    final String[] fromPrefixes = new String[] { "org/lwjgl/", "javax/xml/bind/", "javax/servlet/" };
 
-    final String[] toPrefixes = new String[] { "org/lwjglx/", "me/eigenraven/lwjgl3ify/paulscode/sound/libraries/",
-            "jakarta/xml/bind/", "jakarta/servlet/" };
+    final String[] toPrefixes = new String[] { "org/lwjglx/", "jakarta/xml/bind/", "jakarta/servlet/" };
 
     @Override
     public String map(String typeName) {

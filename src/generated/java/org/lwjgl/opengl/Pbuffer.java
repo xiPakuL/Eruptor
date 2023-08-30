@@ -47,4 +47,5 @@ public class Pbuffer extends org.lwjglx.opengl.DrawableGL {
     public void setAttrib(int arg0, int arg1) {
         throw new UnsupportedOperationException();
     }
+
 }

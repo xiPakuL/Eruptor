@@ -198,4 +198,5 @@ public class Display {
     public static boolean wasResized() {
         throw new UnsupportedOperationException();
     }
+
 }

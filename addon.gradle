@@ -1,17 +1,47 @@
 import org.gradle.jvm.toolchain.internal.DefaultToolchainSpec
 
+def newJavaToolchainSpec = new DefaultToolchainSpec(objects)
+newJavaToolchainSpec.vendor.set(JvmVendorSpec.AZUL)
+newJavaToolchainSpec.languageVersion.set(JavaLanguageVersion.of(17))
+
+def extraJavaArgs = [
+    "--illegal-access=warn",
+     "-Djava.security.manager=allow",
+     "-Dfile.encoding=UTF-8",
+     "--add-opens", "java.base/jdk.internal.loader=ALL-UNNAMED",
+     "--add-opens", "java.base/java.net=ALL-UNNAMED",
+     "--add-opens", "java.base/java.nio=ALL-UNNAMED",
+     "--add-opens", "java.base/java.io=ALL-UNNAMED",
+     "--add-opens", "java.base/java.lang=ALL-UNNAMED",
+     "--add-opens", "java.base/java.lang.reflect=ALL-UNNAMED",
+     "--add-opens", "java.base/java.text=ALL-UNNAMED",
+     "--add-opens", "java.base/java.util=ALL-UNNAMED",
+     "--add-opens", "java.base/jdk.internal.reflect=ALL-UNNAMED",
+     "--add-opens", "java.base/sun.nio.ch=ALL-UNNAMED",
+     "--add-opens", "jdk.naming.dns/com.sun.jndi.dns=ALL-UNNAMED,java.naming",
+     "--add-opens", "java.desktop/sun.awt.image=ALL-UNNAMED",
+     "--add-opens", "java.desktop/com.sun.imageio.plugins.png=ALL-UNNAMED",
+     "--add-modules", "jdk.dynalink",
+     "--add-opens", "jdk.dynalink/jdk.dynalink.beans=ALL-UNNAMED",
+     "--add-modules", "java.sql.rowset",
+     "--add-opens", "java.sql.rowset/javax.sql.rowset.serial=ALL-UNNAMED",
+]
+
 SourceSet forgePatchesSet
+SourceSet hotswapSet
 
 sourceSets {
     create("util") {
-        java {
-        }
+        java {}
     }
     forgePatchesSet = create("forgePatches") {
         java {
             compileClasspath += mcpTasks.patchedMcSources.output
             compileClasspath += mcpTasks.patchedConfiguration
         }
+    }
+    hotswapSet = create("hotswap") {
+        java {}
     }
     named("main").configure {
         java {
@@ -20,6 +50,24 @@ sourceSets {
             runtimeClasspath = forgePatchesSet.output + runtimeClasspath
         }
     }
+}
+
+tasks.named("shadowJar", Jar) {
+    from(hotswapSet.output)
+}
+
+tasks.named("compileHotswapJava", JavaCompile).configure {
+    javaCompiler = javaToolchains.compilerFor(newJavaToolchainSpec)
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.named("compileHotswapScala").configure {
+    enabled = false
+}
+
+repositories {
+    mavenCentral()
 }
 
 dependencies {
@@ -31,6 +79,9 @@ dependencies {
     utilImplementation("com.google.guava:guava:31.1-jre")
 
     forgePatchesImplementation("org.apache.commons:commons-compress:1.21")
+
+    hotswapCompileOnly("org.hotswapagent:hotswap-agent-core:1.4.1")
+    hotswapCompileOnly("net.minecraft:launchwrapper:1.15")
 }
 
 def forgePatchesJar = tasks.register(forgePatchesSet.jarTaskName, Jar) {
@@ -80,7 +131,8 @@ def mmcInstanceFilesZip = tasks.register("mmcInstanceFiles", Zip) {
     from(new File(projectDir, "prism-libraries/"))
     exclude("forgepatches-for-dev-work.json", "META-INF", "META-INF/**")
     filesMatching(["mmc-pack.json", "patches/me.eigenraven.lwjgl3ify.forgepatches.json"]) {
-        expand "version": project.version
+        expand "version": project.version,
+            "jvmArgs": extraJavaArgs.collect { '"' + it + '"' }.join(", ")
     }
 }
 
@@ -113,32 +165,9 @@ afterEvaluate {
     }
 }
 
-def newJavaToolchainSpec = new DefaultToolchainSpec(objects)
-newJavaToolchainSpec.vendor.set(JvmVendorSpec.ADOPTIUM)
-newJavaToolchainSpec.languageVersion.set(JavaLanguageVersion.of(17))
 def newJavaLauncher = javaToolchains.launcherFor(newJavaToolchainSpec)
 
-minecraft.extraRunJvmArguments.addAll(
-    "--illegal-access=warn",
-    "-Djava.security.manager=allow",
-    "-Dfile.encoding=UTF-8",
-    "--add-opens", "java.base/jdk.internal.loader=ALL-UNNAMED",
-    "--add-opens", "java.base/java.net=ALL-UNNAMED",
-    "--add-opens", "java.base/java.nio=ALL-UNNAMED",
-    "--add-opens", "java.base/java.io=ALL-UNNAMED",
-    "--add-opens", "java.base/java.lang=ALL-UNNAMED",
-    "--add-opens", "java.base/java.lang.reflect=ALL-UNNAMED",
-    "--add-opens", "java.base/java.text=ALL-UNNAMED",
-    "--add-opens", "java.base/java.util=ALL-UNNAMED",
-    "--add-opens", "java.base/jdk.internal.reflect=ALL-UNNAMED",
-    "--add-opens", "java.base/sun.nio.ch=ALL-UNNAMED",
-    "--add-opens", "jdk.naming.dns/com.sun.jndi.dns=ALL-UNNAMED,java.naming",
-    "--add-opens", "java.desktop/sun.awt.image=ALL-UNNAMED",
-    "--add-modules", "jdk.dynalink",
-    "--add-opens", "jdk.dynalink/jdk.dynalink.beans=ALL-UNNAMED",
-    "--add-modules", "java.sql.rowset",
-    "--add-opens", "java.sql.rowset/javax.sql.rowset.serial=ALL-UNNAMED"
-)
+minecraft.extraRunJvmArguments.addAll(extraJavaArgs)
 
 for (runTask in ["runClient", "runServer"]) {
     tasks.named(runTask, JavaExec).configure {

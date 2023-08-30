@@ -1,14 +1,12 @@
 package org.lwjglx.opengl;
 
-import static org.lwjgl.glfw.Callbacks.*;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
+import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
-
-import me.eigenraven.lwjgl3ify.Lwjgl3ify;
-import me.eigenraven.lwjgl3ify.core.Config;
 
 import org.lwjgl.glfw.*;
 import org.lwjgl.glfw.GLFW;
@@ -25,8 +23,12 @@ import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
 import org.lwjglx.BufferUtils;
 import org.lwjglx.Sys;
+import org.lwjglx.input.KeyCodes;
 import org.lwjglx.input.Keyboard;
 import org.lwjglx.input.Mouse;
+
+import me.eigenraven.lwjgl3ify.Lwjgl3ify;
+import me.eigenraven.lwjgl3ify.core.Config;
 
 public class Display {
 
@@ -56,6 +58,8 @@ public class Display {
     private static boolean latestResized = false;
     private static int latestWidth = 0;
     private static int latestHeight = 0;
+    private static boolean cancelNextChar = false;
+    private static Keyboard.KeyEvent ingredientKeyEvent;
     private static ByteBuffer[] savedIcons;
 
     static {
@@ -153,21 +157,43 @@ public class Display {
             public void invoke(long window, int key, int scancode, int action, int mods) {
                 if (Config.DEBUG_PRINT_KEY_EVENTS) {
                     Lwjgl3ify.LOG.info(
-                            "[DEBUG-KEY] key window:{} key:{} scancode:{} action:{} mods:{} char:{}",
+                            "[DEBUG-KEY] key window:{} key:{} scancode:{} action:{} mods:{} charname:{} naive-char:{}",
                             window,
                             key,
                             scancode,
                             action,
                             mods,
+                            KeyEvent.getKeyText(KeyCodes.lwjglToAwt(KeyCodes.glfwToLwjgl(key))),
                             (key >= 32 && key < 127) ? ((char) key) : '?');
                 }
-                latestEventKey = key;
-
-                Keyboard.addGlfwKeyEvent(window, key, scancode, action, mods);
-                // Ctrl should generate ASCII modifier keys (0x01-0x1F), glfw does not give use char events for this
-                if ((mods & GLFW_MOD_CONTROL) != 0 && key >= GLFW_KEY_A && key <= GLFW_KEY_Z) {
-                    int codepoint = key & 0x1F;
-                    Keyboard.addCharEvent(key, (char) codepoint);
+                cancelNextChar = false;
+                if (key > GLFW_KEY_SPACE && key <= GLFW_KEY_GRAVE_ACCENT) { // Handle keys have a char. Exclude space to
+                                                                            // avoid extra input when switching IME
+                    if ((GLFW_MOD_CONTROL & mods) != 0 && (GLFW_MOD_ALT & mods) == 0) { // Handle ctrl + x/c/v.
+                        Keyboard.addGlfwKeyEvent(window, key, scancode, action, mods, (char) (key & 0x1f));
+                        cancelNextChar = true; // Cancel char event from ctrl key since its already handled here
+                    } else if (action > 0) { // Delay press and repeat key event to actual char input. There is ALWAYS a
+                                             // char after them
+                        ingredientKeyEvent = new Keyboard.KeyEvent(
+                                KeyCodes.glfwToLwjgl(key),
+                                '\0',
+                                action > 1 ? Keyboard.KeyState.REPEAT : Keyboard.KeyState.PRESS,
+                                Sys.getNanoTime());
+                    } else { // Release event
+                        if (ingredientKeyEvent != null && ingredientKeyEvent.key == KeyCodes.glfwToLwjgl(key)) {
+                            ingredientKeyEvent.queueOutOfOrderRelease = true;
+                        }
+                        Keyboard.addGlfwKeyEvent(window, key, scancode, action, mods, '\0');
+                    }
+                } else { // Other key with no char event associated
+                    char mappedChar = switch (key) {
+                        case GLFW_KEY_ENTER -> 0x0D;
+                        case GLFW_KEY_ESCAPE -> 0x1B;
+                        case GLFW_KEY_TAB -> 0x09;
+                        case GLFW_KEY_BACKSPACE -> 0x08;
+                        default -> '\0';
+                    };
+                    Keyboard.addGlfwKeyEvent(window, key, scancode, action, mods, mappedChar);
                 }
             }
         };
@@ -183,7 +209,20 @@ public class Display {
                             codepoint,
                             (char) codepoint);
                 }
-                Keyboard.addCharEvent(latestEventKey, (char) codepoint);
+                if (cancelNextChar) { // Char event being cancelled
+                    cancelNextChar = false;
+                } else if (ingredientKeyEvent != null) {
+                    ingredientKeyEvent.aChar = (char) codepoint; // Send char with ASCII key event here
+                    Keyboard.addRawKeyEvent(ingredientKeyEvent);
+                    if (ingredientKeyEvent.queueOutOfOrderRelease) {
+                        ingredientKeyEvent = ingredientKeyEvent.copy();
+                        ingredientKeyEvent.state = Keyboard.KeyState.RELEASE;
+                        Keyboard.addRawKeyEvent(ingredientKeyEvent);
+                    }
+                    ingredientKeyEvent = null;
+                } else {
+                    Keyboard.addCharEvent(0, (char) codepoint); // Non-ASCII chars
+                }
             }
         };
 
@@ -453,6 +492,9 @@ public class Display {
 
     public static void setTitle(String title) {
         windowTitle = title;
+        if (isCreated()) {
+            glfwSetWindowTitle(getWindow(), title);
+        }
     }
 
     public static boolean isCloseRequested() {
@@ -562,6 +604,32 @@ public class Display {
             return GL11.glGetString(GL11.GL_VERSION);
         }
         return "Unknown";
+    }
+
+    public static String getTitle() {
+        return windowTitle;
+    }
+
+    public static Canvas getParent() {
+        return null;
+    }
+
+    public static float getPixelScaleFactor() {
+        if (!isCreated()) {
+            return 1.0f;
+        }
+        float[] xScale = new float[1];
+        float[] yScale = new float[1];
+        glfwGetWindowContentScale(getWindow(), xScale, yScale);
+        return Math.max(xScale[0], yScale[0]);
+    }
+
+    public static void setSwapInterval(int value) {
+        glfwSwapInterval(value);
+    }
+
+    public static void setDisplayConfiguration(float gamma, float brightness, float contrast) {
+        // ignore
     }
 
     /**

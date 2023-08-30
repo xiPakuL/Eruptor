@@ -6,14 +6,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import me.eigenraven.lwjgl3ify.Tags;
-
 import net.minecraft.launchwrapper.LaunchClassLoader;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.system.Configuration;
 import org.lwjgl.system.Platform;
+import org.lwjglx.Sys;
 import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
 
@@ -21,6 +20,7 @@ import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
 
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
+import me.eigenraven.lwjgl3ify.Tags;
 
 @IFMLLoadingPlugin.MCVersion("1.7.10")
 @IFMLLoadingPlugin.TransformerExclusions({ "org.lwjglx", "org.lwjgl", "org.lwjgl.input", "org.lwjglx.input" })
@@ -43,6 +43,8 @@ public class Lwjgl3ifyCoremod implements IFMLLoadingPlugin, IEarlyMixinLoader {
             launchLoader.addClassLoaderExclusion("org.omg");
             launchLoader.addClassLoaderExclusion("org.w3c.dom");
             launchLoader.addClassLoaderExclusion("org.xml.sax");
+            launchLoader.addClassLoaderExclusion("org.hotswap.agent");
+            launchLoader.addClassLoaderExclusion("org.lwjglx.debug");
         } catch (ClassCastException e) {
             LOGGER.warn("Unsupported launch class loader type " + getClass().getClassLoader().getClass(), e);
         }
@@ -54,6 +56,7 @@ public class Lwjgl3ifyCoremod implements IFMLLoadingPlugin, IEarlyMixinLoader {
         }
         if (FMLLaunchHandler.side().isClient()) {
             clientMacOsFix();
+            Sys.initialize();
         }
     }
 

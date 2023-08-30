@@ -2,15 +2,16 @@ package me.eigenraven.lwjgl3ify.mixins.game;
 
 import java.util.*;
 
-import me.eigenraven.lwjgl3ify.textures.StbStitcher;
-
 import net.minecraft.client.renderer.texture.Stitcher;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+
+import me.eigenraven.lwjgl3ify.textures.StbStitcher;
 
 @Mixin(Stitcher.class)
 @SuppressWarnings({ "unchecked", "rawtypes" })
@@ -36,9 +37,9 @@ public abstract class MixinStitcher {
                 .toArray(new Stitcher.Holder[this.setStitchHolders.size()]);
         Arrays.sort(aholder);
 
-        int size = StbStitcher.packRects(aholder);
-        this.currentWidth = size;
-        this.currentHeight = size;
+        Pair<Integer, Integer> size = StbStitcher.packRects(aholder);
+        this.currentWidth = size.getLeft();
+        this.currentHeight = size.getRight();
     }
 
     /**
