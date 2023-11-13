@@ -1,6 +1,9 @@
 package me.eigenraven.lwjgl3ify.mixins.game;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 
 import net.minecraft.client.renderer.texture.Stitcher;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -34,7 +37,7 @@ public abstract class MixinStitcher {
     @Overwrite
     public void doStitch() {
         Stitcher.Holder[] aholder = (Stitcher.Holder[]) this.setStitchHolders
-                .toArray(new Stitcher.Holder[this.setStitchHolders.size()]);
+            .toArray(new Stitcher.Holder[this.setStitchHolders.size()]);
         Arrays.sort(aholder);
 
         Pair<Integer, Integer> size = StbStitcher.packRects(aholder);

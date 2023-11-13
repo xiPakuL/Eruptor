@@ -16,7 +16,7 @@
 package org.lwjglx;
 
 import java.lang.reflect.Field;
-import java.nio.*;
+import java.nio.ByteBuffer;
 
 import javax.annotation.Nullable;
 
@@ -42,7 +42,7 @@ public class PointerBuffer extends org.lwjgl.PointerBuffer {
     }
 
     protected PointerBuffer(long address, @Nullable ByteBuffer container, int mark, int position, int limit,
-            int capacity) {
+        int capacity) {
         super(address, container, mark, position, limit, capacity);
     }
 

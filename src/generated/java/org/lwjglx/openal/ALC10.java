@@ -30,10 +30,10 @@ public class ALC10 {
     }
 
     public static org.lwjglx.openal.ALCcontext alcCreateContext(org.lwjglx.openal.ALCdevice arg0,
-            java.nio.IntBuffer arg1) {
+        java.nio.IntBuffer arg1) {
 
         org.lwjglx.openal.ALCcontext returnValue = new ALCcontext(
-                org.lwjgl.openal.ALC10.alcCreateContext(arg0.device, arg1));
+            org.lwjgl.openal.ALC10.alcCreateContext(arg0.device, arg1));
 
         return returnValue;
     }
@@ -43,6 +43,27 @@ public class ALC10 {
         org.lwjglx.openal.ALCcontext returnValue = new ALCcontext(org.lwjgl.openal.ALC10.alcGetCurrentContext());
 
         return returnValue;
+    }
+
+    public static void alcDestroyContext(org.lwjglx.openal.ALCcontext ctx) {
+        org.lwjgl.openal.ALC10.alcDestroyContext(ctx.context);
+    }
+
+    public static org.lwjglx.openal.ALCdevice alcGetContextsDevice(org.lwjglx.openal.ALCcontext ctx) {
+        final long devId = org.lwjgl.openal.ALC10.alcGetContextsDevice(ctx.context);
+        return new ALCdevice(devId);
+    }
+
+    public static int alcMakeContextCurrent(org.lwjglx.openal.ALCcontext ctx) {
+        return org.lwjgl.openal.ALC10.alcMakeContextCurrent(ctx.context) ? ALC_TRUE : ALC_FALSE;
+    }
+
+    public static void alcProcessContext(org.lwjglx.openal.ALCcontext ctx) {
+        org.lwjgl.openal.ALC10.alcProcessContext(ctx.context);
+    }
+
+    public static void alcSuspendContext(org.lwjglx.openal.ALCcontext ctx) {
+        org.lwjgl.openal.ALC10.alcSuspendContext(ctx.context);
     }
 
     public static int alcGetEnumValue(org.lwjglx.openal.ALCdevice device, java.lang.String enumName) {
@@ -82,7 +103,7 @@ public class ALC10 {
     public static org.lwjglx.openal.ALCdevice alcOpenDevice(java.lang.String arg0) {
 
         org.lwjglx.openal.ALCdevice returnValue = new org.lwjglx.openal.ALCdevice(
-                org.lwjgl.openal.ALC10.alcOpenDevice(arg0));
+            org.lwjgl.openal.ALC10.alcOpenDevice(arg0));
 
         return returnValue;
     }

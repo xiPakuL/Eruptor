@@ -3,24 +3,28 @@ package org.lwjglx.opengl;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
-import java.awt.*;
+import java.awt.Canvas;
 import java.awt.event.KeyEvent;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
-import org.lwjgl.glfw.*;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCharCallback;
 import org.lwjgl.glfw.GLFWCursorPosCallback;
+import org.lwjgl.glfw.GLFWFramebufferSizeCallback;
+import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.glfw.GLFWKeyCallback;
 import org.lwjgl.glfw.GLFWMouseButtonCallback;
+import org.lwjgl.glfw.GLFWScrollCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.glfw.GLFWWindowFocusCallback;
 import org.lwjgl.glfw.GLFWWindowIconifyCallback;
 import org.lwjgl.glfw.GLFWWindowPosCallback;
 import org.lwjgl.glfw.GLFWWindowRefreshCallback;
+import org.lwjgl.glfw.GLFWWindowSizeCallback;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.system.Platform;
 import org.lwjglx.BufferUtils;
 import org.lwjglx.Sys;
 import org.lwjglx.input.KeyCodes;
@@ -157,28 +161,34 @@ public class Display {
             public void invoke(long window, int key, int scancode, int action, int mods) {
                 if (Config.DEBUG_PRINT_KEY_EVENTS) {
                     Lwjgl3ify.LOG.info(
-                            "[DEBUG-KEY] key window:{} key:{} scancode:{} action:{} mods:{} charname:{} naive-char:{}",
-                            window,
-                            key,
-                            scancode,
-                            action,
-                            mods,
-                            KeyEvent.getKeyText(KeyCodes.lwjglToAwt(KeyCodes.glfwToLwjgl(key))),
-                            (key >= 32 && key < 127) ? ((char) key) : '?');
+                        "[DEBUG-KEY] key window:{} key:{} scancode:{} action:{} mods:{} charname:{} naive-char:{}",
+                        window,
+                        key,
+                        scancode,
+                        action,
+                        mods,
+                        KeyEvent.getKeyText(KeyCodes.lwjglToAwt(KeyCodes.glfwToLwjgl(key))),
+                        (key >= 32 && key < 127) ? ((char) key) : '?');
                 }
                 cancelNextChar = false;
                 if (key > GLFW_KEY_SPACE && key <= GLFW_KEY_GRAVE_ACCENT) { // Handle keys have a char. Exclude space to
                                                                             // avoid extra input when switching IME
-                    if ((GLFW_MOD_CONTROL & mods) != 0 && (GLFW_MOD_ALT & mods) == 0) { // Handle ctrl + x/c/v.
+                    if ((GLFW_MOD_SUPER & mods) != 0) {
+                        Keyboard.addGlfwKeyEvent(window, key, scancode, action, mods, (char) key);
+                        if (Platform.get() != Platform.MACOSX) {
+                            // MacOS doesn't send a char event for Cmd+KEY presses, but other platforms do.
+                            cancelNextChar = true;
+                        }
+                    } else if ((GLFW_MOD_CONTROL & mods) != 0) { // Handle ctrl + x/c/v.
                         Keyboard.addGlfwKeyEvent(window, key, scancode, action, mods, (char) (key & 0x1f));
                         cancelNextChar = true; // Cancel char event from ctrl key since its already handled here
                     } else if (action > 0) { // Delay press and repeat key event to actual char input. There is ALWAYS a
                                              // char after them
                         ingredientKeyEvent = new Keyboard.KeyEvent(
-                                KeyCodes.glfwToLwjgl(key),
-                                '\0',
-                                action > 1 ? Keyboard.KeyState.REPEAT : Keyboard.KeyState.PRESS,
-                                Sys.getNanoTime());
+                            KeyCodes.glfwToLwjgl(key),
+                            '\0',
+                            action > 1 ? Keyboard.KeyState.REPEAT : Keyboard.KeyState.PRESS,
+                            Sys.getNanoTime());
                     } else { // Release event
                         if (ingredientKeyEvent != null && ingredientKeyEvent.key == KeyCodes.glfwToLwjgl(key)) {
                             ingredientKeyEvent.queueOutOfOrderRelease = true;
@@ -203,11 +213,8 @@ public class Display {
             @Override
             public void invoke(long window, int codepoint) {
                 if (Config.DEBUG_PRINT_KEY_EVENTS) {
-                    Lwjgl3ify.LOG.info(
-                            "[DEBUG-KEY] char window:{} codepoint:{} char:{}",
-                            window,
-                            codepoint,
-                            (char) codepoint);
+                    Lwjgl3ify.LOG
+                        .info("[DEBUG-KEY] char window:{} codepoint:{} char:{}", window, codepoint, (char) codepoint);
                 }
                 if (cancelNextChar) { // Char event being cancelled
                     cancelNextChar = false;
@@ -243,11 +250,11 @@ public class Display {
             public void invoke(long window, int button, int action, int mods) {
                 if (Config.DEBUG_PRINT_MOUSE_EVENTS) {
                     Lwjgl3ify.LOG.info(
-                            "[DEBUG-MOUSE] button window:{} button:{} action:{} mods:{}",
-                            window,
-                            button,
-                            action,
-                            mods);
+                        "[DEBUG-MOUSE] button window:{} button:{} action:{} mods:{}",
+                        window,
+                        button,
+                        action,
+                        mods);
                 }
                 Mouse.addButtonEvent(button, action == GLFW.GLFW_PRESS ? true : false);
             }
@@ -498,7 +505,9 @@ public class Display {
     }
 
     public static boolean isCloseRequested() {
-        return glfwWindowShouldClose(Window.handle);
+        final boolean saved = glfwWindowShouldClose(Window.handle);
+        glfwSetWindowShouldClose(Window.handle, false);
+        return saved;
     }
 
     public static boolean isDirty() {
@@ -524,7 +533,10 @@ public class Display {
             if (dimension * dimension * 4 != nativeBuffers[icon].limit()) {
                 throw new IllegalStateException();
             }
-            glfwImages.put(icon, GLFWImage.create().set(dimension, dimension, nativeBuffers[icon]));
+            glfwImages.put(
+                icon,
+                GLFWImage.create()
+                    .set(dimension, dimension, nativeBuffers[icon]));
         }
         GLFW.glfwSetWindowIcon(getWindow(), glfwImages);
         glfwImages.free();

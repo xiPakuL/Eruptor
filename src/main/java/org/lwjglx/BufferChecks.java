@@ -15,7 +15,13 @@
  */
 package org.lwjglx;
 
-import java.nio.*;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import java.nio.ShortBuffer;
 
 /**
  * <p>
@@ -24,7 +30,7 @@ import java.nio.*;
  *
  * Internal class, don't use.
  * </p>
- * 
+ *
  * @author cix_foo <cix_foo@users.sourceforge.net>
  * @author elias_naur <elias_naur@users.sourceforge.net>
  * @version $Revision$ $Id$
@@ -141,29 +147,29 @@ public class BufferChecks {
      */
     private static void throwBufferSizeException(Buffer buf, int size) {
         throw new IllegalArgumentException(
-                "Number of remaining buffer elements is " + buf.remaining()
-                        + ", must be at least "
-                        + size
-                        + ". Because at most "
-                        + size
-                        + " elements can be returned, a buffer with at least "
-                        + size
-                        + " elements is required, regardless of actual returned element count");
+            "Number of remaining buffer elements is " + buf.remaining()
+                + ", must be at least "
+                + size
+                + ". Because at most "
+                + size
+                + " elements can be returned, a buffer with at least "
+                + size
+                + " elements is required, regardless of actual returned element count");
     }
 
     private static void throwBufferSizeException(PointerBuffer buf, int size) {
         throw new IllegalArgumentException(
-                "Number of remaining pointer buffer elements is " + buf.remaining() + ", must be at least " + size);
+            "Number of remaining pointer buffer elements is " + buf.remaining() + ", must be at least " + size);
     }
 
     private static void throwArraySizeException(Object[] array, int size) {
         throw new IllegalArgumentException(
-                "Number of array elements is " + array.length + ", must be at least " + size);
+            "Number of array elements is " + array.length + ", must be at least " + size);
     }
 
     private static void throwArraySizeException(long[] array, int size) {
         throw new IllegalArgumentException(
-                "Number of array elements is " + array.length + ", must be at least " + size);
+            "Number of array elements is " + array.length + ", must be at least " + size);
     }
 
     /**
